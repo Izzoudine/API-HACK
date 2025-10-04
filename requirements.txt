@@ -1,7 +1,8 @@
-flask
 gunicorn
 aiohttp
 pandas
 numpy
 prophet
 joblib
+fastapi
+pydantic
