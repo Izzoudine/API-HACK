@@ -1,0 +1,6 @@
+flask
+aiohttp
+pandas
+numpy
+prophet
+joblib

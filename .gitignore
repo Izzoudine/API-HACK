@@ -1,0 +1,9 @@
+# Ignore all .log files
+*.log
+# Ignore all files in any directory named temp
+cache/
+__pycache__/
+data/
+venv/
+test.py
+incha.py
