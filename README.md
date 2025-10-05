@@ -73,8 +73,6 @@ http://127.0.0.1:8000
 
 ---
 
----
-
 ## 🌐 NASA Space Challenge 2025
 
 This project contributes to the NASA Space Challenge 2025 by leveraging AI and climate data to predict extreme weather events, helping communities prepare for and mitigate the impacts of climate change.
