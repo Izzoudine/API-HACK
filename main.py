@@ -8,66 +8,46 @@ import joblib
 import os
 import io
 import urllib.parse as urlp
+import matplotlib.pyplot as plt
+import seaborn as sns
 
+# -------------------
 # Activity-specific thresholds
+# -------------------
 ACTIVITY_THRESHOLDS = {
     "skiing": {
-        "hot>5C": 5,
-        "cold<0C": 0,
-        "wet>8mm": 8,
+        "hot>5C": 5, "cold<0C": 0, "wet>8mm": 8,
         "weights": {"hot": 0.4, "cold": 0.3, "wet": 0.3}
     },
     "picnic": {
-        "hot>30C": 30,
-        "cold<8C": 8,
-        "windy>20kmh": 20,
-        "wet>10mm": 10,
+        "hot>30C": 30, "cold<8C": 8, "windy>20kmh": 20, "wet>10mm": 10,
         "weights": {"hot": 0.3, "cold": 0.2, "windy": 0.25, "wet": 0.25}
     },
     "hiking": {
-        "hot>35C": 35,
-        "cold<5C": 5,
-        "windy>25kmh": 25,
-        "wet>15mm": 15,
+        "hot>35C": 35, "cold<5C": 5, "windy>25kmh": 25, "wet>15mm": 15,
         "weights": {"hot": 0.25, "cold": 0.25, "windy": 0.25, "wet": 0.25}
     },
     "cycling": {
-        "hot>32C": 32,
-        "cold<10C": 10,
-        "windy>30kmh": 30,
-        "wet>12mm": 12,
+        "hot>32C": 32, "cold<10C": 10, "windy>30kmh": 30, "wet>12mm": 12,
         "weights": {"hot": 0.3, "cold": 0.2, "windy": 0.3, "wet": 0.2}
     },
     "running": {
-        "hot>28C": 28,
-        "cold<5C": 5,
-        "windy>25kmh": 25,
-        "wet>10mm": 10,
+        "hot>28C": 28, "cold<5C": 5, "windy>25kmh": 25, "wet>10mm": 10,
         "weights": {"hot": 0.3, "cold": 0.3, "windy": 0.2, "wet": 0.2}
     },
     "beach": {
-        "hot>25C": 25,
-        "cold<18C": 18,
-        "windy>15kmh": 15,
-        "wet>5mm": 5,
+        "hot>25C": 25, "cold<18C": 18, "windy>15kmh": 15, "wet>5mm": 5,
         "weights": {"hot": 0.4, "cold": 0.2, "windy": 0.2, "wet": 0.2}
     },
     "fishing": {
-        "hot>35C": 35,
-        "cold<5C": 5,
-        "windy>20kmh": 20,
-        "wet>10mm": 10,
+        "hot>35C": 35, "cold<5C": 5, "windy>20kmh": 20, "wet>10mm": 10,
         "weights": {"hot": 0.2, "cold": 0.3, "windy": 0.3, "wet": 0.2}
     },
     "camping": {
-        "hot>30C": 30,
-        "cold<10C": 10,
-        "windy>20kmh": 20,
-        "wet>15mm": 15,
+        "hot>30C": 30, "cold<10C": 10, "windy>20kmh": 20, "wet>15mm": 15,
         "weights": {"hot": 0.25, "cold": 0.25, "windy": 0.25, "wet": 0.25}
     }
 }
-
 
 # -------------------
 # NASA POWER API
@@ -141,7 +121,6 @@ def monte_carlo_probs(forecast, activities, n_samples=1000):
     results = {}
     rng = np.random.default_rng()
 
-    # Merge forecast DataFrames
     df_temp = forecast["temp"].rename(
         columns={"yhat": "yhat_temp", "yhat_lower": "yhat_lower_temp", "yhat_upper": "yhat_upper_temp", "ds": "date"}
     )
@@ -171,7 +150,6 @@ def monte_carlo_probs(forecast, activities, n_samples=1000):
             thresh = ACTIVITY_THRESHOLDS[activity]
             weights = thresh.get("weights", {})
 
-            # Identify threshold keys
             hot_key = next((k for k in thresh if k.startswith("hot>")), None)
             cold_key = next((k for k in thresh if k.startswith("cold<")), None)
             windy_key = next((k for k in thresh if k.startswith("windy>")), None)
@@ -187,7 +165,6 @@ def monte_carlo_probs(forecast, activities, n_samples=1000):
             if wet_key and "wet" in weights:
                 probs[f"very_wet_for_{activity}"] = np.mean(prec_samples > thresh[wet_key]) * 100
 
-            # Calculate discomfort
             discomfort = np.zeros(n_samples)
             if hot_key and "hot" in weights:
                 discomfort += (temp_samples > thresh[hot_key]) * weights["hot"]
@@ -208,6 +185,65 @@ def monte_carlo_probs(forecast, activities, n_samples=1000):
     return results
 
 # -------------------
+# Visualization
+# -------------------
+# -------------------
+# Visualization
+# -------------------
+from scipy.stats import beta
+
+def visualize_forecast_probs(probs, activity, variable, output_dir="plots", save=True):
+    os.makedirs(output_dir, exist_ok=True)
+    
+    dates, values, stds = [], [], []
+    for date, day_result in probs.items():
+        if activity in day_result and variable in day_result[activity]:
+            dates.append(date)
+            val = day_result[activity][variable]
+            values.append(val)
+            # Estimate std from discomfort probability if possible, else default to 5
+            stds.append(max(1, min(val, 100 - val) * 0.1))  # simple proxy
+    
+    if not dates:
+        print(f"No data for {activity} / {variable}")
+        return
+    
+    df = pd.DataFrame({"date": dates, "prob": values, "std": stds})
+    
+    # Bell Curve using Beta distribution
+    all_samples = []
+    for val, std in zip(df["prob"], df["std"]):
+        # Convert mean+std to alpha/beta params
+        # Normalize to [0,1] for beta
+        mean = val / 100
+        mean = np.clip(mean, 1e-3, 1 - 1e-3)  # avoid zero/one
+        var = (std / 100) ** 2
+        
+        # Avoid zero variance
+        var = max(var, 1e-6)
+        # Calculate alpha/beta
+        alpha = ((1 - mean) / var - 1 / mean) * mean**2
+        beta_param = alpha * (1 / mean - 1)
+        # Generate samples
+        samples = beta.rvs(alpha, beta_param, size=5000)
+        samples = np.clip(samples, 0, 1) * 100
+        all_samples.extend(samples)
+    
+    plt.figure(figsize=(8,5))
+    sns.histplot(all_samples, bins=30, kde=True, color='skyblue')
+    plt.axvline(np.mean(values), color='red', linestyle='--', label=f"Mean: {np.mean(values):.1f}%")
+    plt.title(f"Probability Distribution: {variable.replace('_',' ')} ({activity})")
+    plt.xlabel("Probability (%)")
+    plt.ylabel("Density")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(os.path.join(output_dir, f"bell_curve_{activity}_{variable}.png"))
+    plt.close()
+
+# -------------------
 # Main Forecast Function
 # -------------------
 async def forecast_extremes(lat, lon, future_date, activities, start_year=2024, end_year=2024):
@@ -215,36 +251,41 @@ async def forecast_extremes(lat, lon, future_date, activities, start_year=2024, 
     target_date = pd.to_datetime(future_date)
     horizon_days = (target_date - end_date).days + 1
     
-    # Fetch data from NASA POWER API
+    # Fetch data
     df_temp, df_wind, df_prec = await fetch_power_series(lat, lon, start_year, end_year)
-    
     if df_temp.empty or df_wind.empty or df_prec.empty:
         print("Failed to fetch data from NASA POWER API.")
         return {}
     
-    # Generate forecasts
+    # Forecasts
     fcst_temp = forecast_prophet(df_temp, "T2M", horizon_days)
     fcst_wind = forecast_prophet(df_wind, "WS2M", horizon_days)
     fcst_prec = forecast_prophet(df_prec, "precipitation", horizon_days)
     
-    # Bundle forecasts
     fcst = {"temp": fcst_temp, "wind": fcst_wind, "prec": fcst_prec}
     
-    # Compute probabilities
+    # Monte Carlo probabilities
     probs = monte_carlo_probs(fcst, activities)
     
-    # Filter results for the target date
+    # Filter for target date
     target_date = pd.to_datetime(future_date).date()
+    
     target_results = {k: v for k, v in probs.items() if k.date() == target_date}
     
     # Print results
     print(f"\nForecasted probabilities for {future_date} at lat={lat}, lon={lon}:")
     for date, day_result in target_results.items():
-        print(f"\nDate: {date.date()}")
+        print(f"\nDate: {date}")
         for activity, conditions in day_result.items():
             print(f"  Activity: {activity}")
             for condition, prob in conditions.items():
-                print(f"    {condition.replace('_', ' ')}: {prob:.1f}%")
+                print(f"    {condition.replace('_',' ')}: {prob:.1f}%")
+    
+    # Visualize
+    for date, day_result in target_results.items():
+        for activity in day_result:
+            for variable in day_result[activity]:
+                visualize_forecast_probs({date: day_result}, activity, variable)
     
     return target_results
 
@@ -254,10 +295,10 @@ async def forecast_extremes(lat, lon, future_date, activities, start_year=2024, 
 if __name__ == "__main__":
     lat, lon = 40.7128, -74.006  # New York City
     future_date = "2026-12-31"
-    activities = ["skiing", "picnic"]
+    activities = ["skiing"]
     
     async def main():
-        results = await forecast_extremes(lat, lon, future_date, activities, start_year=2020, end_year=2024)
+        results = await forecast_extremes(lat, lon, future_date, activities, start_year=2010, end_year=2024)
         return results
     
     asyncio.run(main())
