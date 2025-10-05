@@ -5,4 +5,8 @@ numpy
 prophet
 joblib
 fastapi
+asyncio
+plotly
 pydantic
+folium
+uvicorn
