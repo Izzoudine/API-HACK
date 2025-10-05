@@ -190,45 +190,6 @@ def monte_carlo_probs(forecast, activities, n_samples=1000):
 # -------------------
 # Visualization
 # -------------------
-def visualize_forecast_probs(probs, activity, variable):
-    dates, values, stds = [], [], []
-    for date, day_result in probs.items():
-        if activity in day_result and variable in day_result[activity]:
-            dates.append(date)
-            val = day_result[activity][variable]
-            values.append(val)
-            stds.append(max(1, min(val, 100 - val) * 0.1))
-
-    if not dates:
-        return None
-
-    df = pd.DataFrame({"date": dates, "prob": values, "std": stds})
-    all_samples = []
-
-    for val, std in zip(df["prob"], df["std"]):
-        mean = np.clip(val / 100, 1e-3, 1 - 1e-3)
-        var = (std / 100) ** 2
-        var = max(var, 1e-6)
-        alpha = ((1 - mean) / var - 1 / mean) * mean**2
-        beta_param = alpha * (1 / mean - 1)
-        samples = beta.rvs(alpha, beta_param, size=5000)
-        all_samples.extend(samples * 100)
-
-    plt.figure(figsize=(8, 5))
-    sns.histplot(all_samples, bins=30, kde=True, color='skyblue')
-    plt.axvline(np.mean(values), color='red', linestyle='--', label=f"Mean: {np.mean(values):.1f}%")
-    plt.title(f"Probability Distribution: {variable.replace('_',' ')} ({activity})")
-    plt.xlabel("Probability (%)")
-    plt.ylabel("Density")
-    plt.legend()
-    plt.tight_layout()
-
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png")
-    plt.close()
-    buf.seek(0)
-    img_b64 = base64.b64encode(buf.read()).decode("utf-8")
-    return img_b64
 
 # -------------------
 # Main Forecast Function (zone version)
@@ -251,14 +212,11 @@ async def forecast_zone_extremes(points, future_date, activities, start_year=202
     probs = monte_carlo_probs(fcst, activities)
     target_date = pd.to_datetime(future_date).date()
     target_results = {k: v for k, v in probs.items() if k.date() == target_date}
+    # Convert datetime keys to simple date strings
+    output = {
+    "results": {k.strftime("%Y-%m-%d"): v for k, v in target_results.items()} 
+    }
 
-    output = {"results": target_results, "plots": {}}
-    for date, day_result in target_results.items():
-        for activity in day_result:
-            for variable in day_result[activity]:
-                img_b64 = visualize_forecast_probs({date: day_result}, activity, variable)
-                if img_b64:
-                    output["plots"][f"{activity}_{variable}"] = img_b64
 
     return output
 
