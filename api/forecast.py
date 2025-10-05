@@ -280,7 +280,7 @@ if __name__ == "__main__":
     activities = ["skiing", "picnic"]
     
     async def main():
-        results = await forecast_zone_extremes(points, future_date, activities,"plot", start_year=2000, end_year=2024)
+        results = await forecast_zone_extremes(points, future_date, activities, start_year=2000, end_year=2024)
         return results
     
     asyncio.run(main())
