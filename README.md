@@ -1,6 +1,6 @@
 # NASA Climate API
 
-This project is a FastAPI-based backend that predicts extreme weather probabilities (such as heatwaves, heavy rain, or cold conditions) for a given date and location. It is part of the **NASA Space Challenge 2025** initiative to use AI and data to anticipate climate extremes that impact human life and ecosystems.
+This project is a FastAPI-based backend that predicts extreme weather probabilities (such as heatwaves, heavy rain, or cold conditions) for a given date and location. It is part of the **NASA Space Challenge 2025** initiative to use AI and data to anticipate climate extremes that impact human life and ecosystems. 
 
 ---
 
