@@ -7,7 +7,6 @@ from datetime import datetime
 import joblib
 import os
 import io
-import urllib.parse as urlp
 import matplotlib.pyplot as plt
 import seaborn as sns
 import base64
@@ -18,79 +17,26 @@ from scipy.stats import beta
 # -------------------
 
 ACTIVITY_THRESHOLDS = {
-    "skiing": {
-        "hot>5C": 5, "cold<0C": 0, "wet>8mm": 8,
-        "weights": {"hot": 0.4, "cold": 0.3, "wet": 0.3}
-    },
-    "picnic": {
-        "hot>30C": 30, "cold<8C": 8, "windy>20kmh": 20, "wet>10mm": 10,
-        "weights": {"hot": 0.3, "cold": 0.2, "windy": 0.25, "wet": 0.25}
-    },
-    "hiking": {
-        "hot>35C": 35, "cold<5C": 5, "windy>25kmh": 25, "wet>15mm": 15,
-        "weights": {"hot": 0.25, "cold": 0.25, "windy": 0.25, "wet": 0.25}
-    },
-    "cycling": {
-        "hot>32C": 32, "cold<10C": 10, "windy>30kmh": 30, "wet>12mm": 12,
-        "weights": {"hot": 0.3, "cold": 0.2, "windy": 0.3, "wet": 0.2}
-    },
-    "running": {
-        "hot>28C": 28, "cold<5C": 5, "windy>25kmh": 25, "wet>10mm": 10,
-        "weights": {"hot": 0.3, "cold": 0.3, "windy": 0.2, "wet": 0.2}
-    },
-    "beach": {
-        "hot>25C": 25, "cold<18C": 18, "windy>15kmh": 15, "wet>5mm": 5,
-        "weights": {"hot": 0.4, "cold": 0.2, "windy": 0.2, "wet": 0.2}
-    },
-    "fishing": {
-        "hot>35C": 35, "cold<5C": 5, "windy>20kmh": 20, "wet>10mm": 10,
-        "weights": {"hot": 0.2, "cold": 0.3, "windy": 0.3, "wet": 0.2}
-    },
-    "camping": {
-        "hot>30C": 30, "cold<10C": 10, "windy>20kmh": 20, "wet>15mm": 15,
-        "weights": {"hot": 0.25, "cold": 0.25, "windy": 0.25, "wet": 0.25}
-    },
-    # 🌊 Water activities
-    "surfing": {
-        "hot>35C": 35, "cold<18C": 18, "windy>40kmh": 40, "wet>5mm": 5,
-        "weights": {"hot": 0.35, "cold": 0.25, "windy": 0.2, "wet": 0.2}
-    },
-    "kayaking": {
-        "hot>38C": 38, "cold<15C": 15, "windy>35kmh": 35, "wet>5mm": 5,
-        "weights": {"hot": 0.3, "cold": 0.2, "windy": 0.3, "wet": 0.2}
-    },
-    # ⚽ Sports
-    "soccer": {
-        "hot>33C": 33, "cold<8C": 8, "wet>15mm": 15, "windy>35kmh": 35,
-        "weights": {"hot": 0.3, "cold": 0.2, "wet": 0.3, "windy": 0.2}
-    },
-    "tennis": {
-        "hot>32C": 32, "cold<10C": 10, "wet>5mm": 5, "windy>30kmh": 30,
-        "weights": {"hot": 0.3, "cold": 0.2, "wet": 0.3, "windy": 0.2}
-    },
-    "golf": {
-        "hot>33C": 33, "cold<10C": 10, "wet>10mm": 10, "windy>25kmh": 25,
-        "weights": {"hot": 0.25, "cold": 0.25, "wet": 0.25, "windy": 0.25}
-    },
-    # 🧗 Adventure
-    "climbing": {
-        "hot>32C": 32, "cold<5C": 5, "windy>35kmh": 35, "wet>10mm": 10,
-        "weights": {"hot": 0.3, "cold": 0.2, "windy": 0.3, "wet": 0.2}
-    },
-    "snowboarding": {
-        "hot>3C": 3, "cold<-15C": -15, "wet>10mm": 10,
-        "weights": {"hot": 0.4, "cold": 0.4, "wet": 0.2}
-    },
-   
-    # 🌍 Default fallback for any unknown activity
-    "other": {
-        "hot>35C": 35, "cold<5C": 5, "wet>15mm": 15, "windy>25kmh": 25,
-        "weights": {"hot": 0.25, "cold": 0.25, "wet": 0.25, "windy": 0.25}
-    }
+    "skiing": {"hot>5C": 5, "cold<0C": 0, "wet>8mm": 8, "weights": {"hot": 0.4, "cold": 0.3, "wet": 0.3}},
+    "picnic": {"hot>30C": 30, "cold<8C": 8, "windy>20kmh": 20, "wet>10mm": 10, "weights": {"hot": 0.3, "cold": 0.2, "windy": 0.25, "wet": 0.25}},
+    "hiking": {"hot>35C": 35, "cold<5C": 5, "windy>25kmh": 25, "wet>15mm": 15, "weights": {"hot": 0.25, "cold": 0.25, "windy": 0.25, "wet": 0.25}},
+    "cycling": {"hot>32C": 32, "cold<10C": 10, "windy>30kmh": 30, "wet>12mm": 12, "weights": {"hot": 0.3, "cold": 0.2, "windy": 0.3, "wet": 0.2}},
+    "running": {"hot>28C": 28, "cold<5C": 5, "windy>25kmh": 25, "wet>10mm": 10, "weights": {"hot": 0.3, "cold": 0.3, "windy": 0.2, "wet": 0.2}},
+    "beach": {"hot>25C": 25, "cold<18C": 18, "windy>15kmh": 15, "wet>5mm": 5, "weights": {"hot": 0.4, "cold": 0.2, "windy": 0.2, "wet": 0.2}},
+    "fishing": {"hot>35C": 35, "cold<5C": 5, "windy>20kmh": 20, "wet>10mm": 10, "weights": {"hot": 0.2, "cold": 0.3, "windy": 0.3, "wet": 0.2}},
+    "camping": {"hot>30C": 30, "cold<10C": 10, "windy>20kmh": 20, "wet>15mm": 15, "weights": {"hot": 0.25, "cold": 0.25, "windy": 0.25, "wet": 0.25}},
+    "surfing": {"hot>35C": 35, "cold<18C": 18, "windy>40kmh": 40, "wet>5mm": 5, "weights": {"hot": 0.35, "cold": 0.25, "windy": 0.2, "wet": 0.2}},
+    "kayaking": {"hot>38C": 38, "cold<15C": 15, "windy>35kmh": 35, "wet>5mm": 5, "weights": {"hot": 0.3, "cold": 0.2, "windy": 0.3, "wet": 0.2}},
+    "soccer": {"hot>33C": 33, "cold<8C": 8, "wet>15mm": 15, "windy>35kmh": 35, "weights": {"hot": 0.3, "cold": 0.2, "wet": 0.3, "windy": 0.2}},
+    "tennis": {"hot>32C": 32, "cold<10C": 10, "wet>5mm": 5, "windy>30kmh": 30, "weights": {"hot": 0.3, "cold": 0.2, "wet": 0.3, "windy": 0.2}},
+    "golf": {"hot>33C": 33, "cold<10C": 10, "wet>10mm": 10, "windy>25kmh": 25, "weights": {"hot": 0.25, "cold": 0.25, "wet": 0.25, "windy": 0.25}},
+    "climbing": {"hot>32C": 32, "cold<5C": 5, "windy>35kmh": 35, "wet>10mm": 10, "weights": {"hot": 0.3, "cold": 0.2, "windy": 0.3, "wet": 0.2}},
+    "snowboarding": {"hot>3C": 3, "cold<-15C": -15, "wet>10mm": 10, "weights": {"hot": 0.4, "cold": 0.4, "wet": 0.2}},
+    "other": {"hot>35C": 35, "cold<5C": 5, "wet>15mm": 15, "windy>25kmh": 25, "weights": {"hot": 0.25, "cold": 0.25, "wet": 0.25, "windy": 0.25}}
 }
 
 # -------------------
-# NASA POWER API
+# NASA POWER API (per point)
 # -------------------
 async def fetch_power_series(lat, lon, start_year, end_year, cache_dir="cache"):
     cache_file_temp = f"{cache_dir}/power_temp_{lat}_{lon}_{start_year}_{end_year}.pkl"
@@ -132,6 +78,29 @@ async def fetch_power_series(lat, lon, start_year, end_year, cache_dir="cache"):
             return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 # -------------------
+# Fetch & Aggregate multiple points
+# -------------------
+async def fetch_zone_power(points, start_year, end_year):
+    tasks = [fetch_power_series(lat, lon, start_year, end_year) for lat, lon in points]
+    results = await asyncio.gather(*tasks)
+    
+    temps, winds, precs = [], [], []
+    for df_temp, df_wind, df_prec in results:
+        if not df_temp.empty:
+            temps.append(df_temp.set_index("date"))
+        if not df_wind.empty:
+            winds.append(df_wind.set_index("date"))
+        if not df_prec.empty:
+            precs.append(df_prec.set_index("date"))
+    
+    # Aggregate by averaging across points
+    df_temp = pd.concat(temps, axis=1).groupby(level=0).mean().reset_index() if temps else pd.DataFrame()
+    df_wind = pd.concat(winds, axis=1).groupby(level=0).mean().reset_index() if winds else pd.DataFrame()
+    df_prec = pd.concat(precs, axis=1).groupby(level=0).mean().reset_index() if precs else pd.DataFrame()
+    
+    return df_temp, df_wind, df_prec
+
+# -------------------
 # Prophet Forecast
 # -------------------
 def forecast_prophet(df, var, horizon_days, sample_freq="D"):
@@ -161,15 +130,9 @@ def monte_carlo_probs(forecast, activities, n_samples=1000):
     results = {}
     rng = np.random.default_rng()
 
-    df_temp = forecast["temp"].rename(
-        columns={"yhat": "yhat_temp", "yhat_lower": "yhat_lower_temp", "yhat_upper": "yhat_upper_temp", "ds": "date"}
-    )
-    df_wind = forecast["wind"].rename(
-        columns={"yhat": "yhat_wind", "yhat_lower": "yhat_lower_wind", "yhat_upper": "yhat_upper_wind", "ds": "date"}
-    )
-    df_prec = forecast["prec"].rename(
-        columns={"yhat": "yhat_prec", "yhat_lower": "yhat_lower_prec", "yhat_upper": "yhat_upper_prec", "ds": "date"}
-    )
+    df_temp = forecast["temp"].rename(columns={"yhat": "yhat_temp", "yhat_lower": "yhat_lower_temp", "yhat_upper": "yhat_upper_temp", "ds": "date"})
+    df_wind = forecast["wind"].rename(columns={"yhat": "yhat_wind", "yhat_lower": "yhat_lower_wind", "yhat_upper": "yhat_upper_wind", "ds": "date"})
+    df_prec = forecast["prec"].rename(columns={"yhat": "yhat_prec", "yhat_lower": "yhat_lower_prec", "yhat_upper": "yhat_upper_prec", "ds": "date"})
 
     df = df_temp.merge(df_wind, on="date").merge(df_prec, on="date")
     
@@ -227,10 +190,6 @@ def monte_carlo_probs(forecast, activities, n_samples=1000):
 # -------------------
 # Visualization
 # -------------------
-# -------------------
-# Visualization
-# -------------------
-
 def visualize_forecast_probs(probs, activity, variable):
     dates, values, stds = [], [], []
     for date, day_result in probs.items():
@@ -264,23 +223,22 @@ def visualize_forecast_probs(probs, activity, variable):
     plt.legend()
     plt.tight_layout()
 
-    # Sauvegarde dans un buffer mémoire
     buf = io.BytesIO()
     plt.savefig(buf, format="png")
     plt.close()
     buf.seek(0)
     img_b64 = base64.b64encode(buf.read()).decode("utf-8")
-
     return img_b64
+
 # -------------------
-# Main Forecast Function
+# Main Forecast Function (zone version)
 # -------------------
-async def forecast_extremes(lat, lon, future_date, activities, start_year=2024, end_year=2024):
+async def forecast_zone_extremes(points, future_date, activities, start_year=2024, end_year=2024):
     end_date = datetime(end_year, 12, 31)
     target_date = pd.to_datetime(future_date)
     horizon_days = (target_date - end_date).days + 1
 
-    df_temp, df_wind, df_prec = await fetch_power_series(lat, lon, start_year, end_year)
+    df_temp, df_wind, df_prec = await fetch_zone_power(points, start_year, end_year)
     if df_temp.empty or df_wind.empty or df_prec.empty:
         return {"error": "Failed to fetch data"}
 
@@ -295,8 +253,6 @@ async def forecast_extremes(lat, lon, future_date, activities, start_year=2024, 
     target_results = {k: v for k, v in probs.items() if k.date() == target_date}
 
     output = {"results": target_results, "plots": {}}
-
-    # Génération des images base64
     for date, day_result in target_results.items():
         for activity in day_result:
             for variable in day_result[activity]:
@@ -310,12 +266,12 @@ async def forecast_extremes(lat, lon, future_date, activities, start_year=2024, 
 # Example Usage
 # -------------------
 if __name__ == "__main__":
-    lat, lon = 40.7128, -74.006  # New York City
+    points = [(40.7128, -74.0060), (40.730610, -73.935242)]  # NYC area zone
     future_date = "2026-12-31"
-    activities = ["skiing"]
+    activities = ["skiing", "picnic"]
     
     async def main():
-        results = await forecast_extremes(lat, lon, future_date, activities, start_year=2010, end_year=2024)
+        results = await forecast_zone_extremes(points, future_date, activities, start_year=2010, end_year=2024)
         return results
     
     asyncio.run(main())
