@@ -23,7 +23,6 @@ This project is a FastAPI-based backend that predicts extreme weather probabilit
   *Note: The repository may currently be empty or in early development. Ensure all files are pushed to make the project accessible.*
 
 - **Online API Endpoint**: The API is deployed at [http://3.22.102.204/api3](http://3.22.102.204/api3)  
-  *If you encounter a "404 Not Found" error, verify the route in `main.py` or try accessing the root [http://3.22.102.204/](http://3.22.102.204/) or Swagger docs at [http://3.22.102.204/docs](http://3.22.102.204/docs).*
 
 ---
 
